@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordonnancement des Tâches de production</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;      
+            background-color: #f7f7f7 #bc2894;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            background-color: #6c5ce7;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin: 0;
+            font-size: 2em;
+            border-bottom: 4px solid #4e39c0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 25px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            display: block;
+            color: #444;
+        }
+
+        input[type="number"], input[type="text"], select, button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 6px;
+            margin-bottom: 18px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 1em;
+            background-color: #fafafa;
+            color: #333;
+        }
+
+        button {
+            background-color: #6c5ce7;
+            color: white;
+            border: none;
+            font-size: 1.1em;
+            transition: background-color 0.3s;
+            cursor: pointer;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        button:hover {
+            background-color: #4e39c0;
+        }
+
+        #results {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 25px;
+        }
+
+        .result-item {
+            margin: 15px 0;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .result-item strong {
+            color: #6c5ce7;
+        }
+
+        .gantt-container {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .gantt-chart-container {
+            padding: 20px;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Ordonnancement des Tâches de production</h1>
+    
+    <div class="container">
+        <form id="scheduler-form">
+            <div class="form-group">
+                <label for="num_jobs">Nombre de tâches :</label>
+                <input type="number" id="num_jobs" name="num_jobs" required>
+            </div>
+
+            <div class="form-group">
+                <label for="num_machines">Nombre de machines :</label>
+                <input type="number" id="num_machines" name="num_machines" required>
+            </div>
+
+            <!-- Section des Temps d'arrivée modifiée -->
+            <div class="form-group">
+                <label for="arrival_times">Temps d'arrivée :</label>
+                <table id="arrival-times-table">
+                    <thead>
+                        <tr>
+                            <th>Tâche</th>
+                            <th>Temps d'arrivée</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Les lignes seront ajoutées dynamiquement ici -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Section des Délais modifiée -->
+            <div class="form-group">
+                <label for="due_dates">Délais :</label>
+                <table id="due-dates-table">
+                    <thead>
+                        <tr>
+                            <th>Tâche</th>
+                            <th>Délais</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Les lignes seront ajoutées dynamiquement ici -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Section des Durées de traitement modifiée -->
+            <div class="form-group">
+                <label for="processing_times">Durées de traitement :</label>
+                <table id="processing-times-table">
+                    <thead>
+                        <tr>
+                            <th>Tâche</th>
+                            <!-- Les en-têtes des machines seront ajoutés dynamiquement ici -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Les lignes seront ajoutées dynamiquement ici -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Section des contraintes -->
+            <div class="form-group">
+                <label for="constraints">Contraintes :</label>
+                <div>
+                    <input type="radio" id="no_wait" name="constraint" value="no_wait">
+                    <label for="no_wait">No Wait</label>
+                </div>
+                <div>
+                    <input type="radio" id="no_idle" name="constraint" value="no_idle">
+                    <label for="no_idle">No Idle</label>
+                </div>
+                <div>
+                    <input type="radio" id="date_arrival" name="constraint" value="date_arrival">
+                    <label for="date_arrival">Date d'arrivée spécifique</label>
+                </div>
+                <div>
+                    <input type="radio" id="due_date_constraint" name="constraint" value="due_date_constraint">
+                    <label for="due_date_constraint">Délai spécifique</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="method">Méthode d'ordonnancement :</label>
+                <select id="method" name="method">
+                    <option value="FIFO">FIFO</option>
+                    <option value="LPT">LPT</option>
+                    <option value="SPT">SPT</option>
+                    <option value="LIFO">LIFO</option>
+                    <option value="EDD">EDD</option>
+                </select>
+            </div>
+
+            <button type="submit">Exécuter</button>
+        </form>
+
+        <div id="results"></div>
+        <div class="gantt-container">
+            <h2>Diagramme de Gantt</h2>
+            <div id="gantt-chart" class="gantt-chart-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('scheduler-form');
+        
+        // Fonction pour générer dynamiquement les lignes pour temps d'arrivée, délais et durées
+        function generateTimeTables(numJobs, numMachines) {
+            const arrivalTableBody = document.getElementById('arrival-times-table').getElementsByTagName('tbody')[0];
+            const dueTableBody = document.getElementById('due-dates-table').getElementsByTagName('tbody')[0];
+            const processingTableBody = document.getElementById('processing-times-table').getElementsByTagName('tbody')[0];
+
+            // Effacer les anciennes lignes
+            arrivalTableBody.innerHTML = '';
+            dueTableBody.innerHTML = '';
+            processingTableBody.innerHTML = '';
+
+            for (let i = 0; i < numJobs; i++) {
+                const arrivalRow = arrivalTableBody.insertRow();
+                const dueRow = dueTableBody.insertRow();
+                const processingRow = processingTableBody.insertRow();
+                
+                const taskCell = arrivalRow.insertCell();
+                taskCell.textContent = `Tâche ${i + 1}`;
+                
+                const arrivalInputCell = arrivalRow.insertCell();
+                const arrivalInput = document.createElement('input');
+                arrivalInput.type = 'number';
+                arrivalInput.name = `arrival_time_${i}`;
+                arrivalInput.placeholder = 'Temps d\'arrivée';
+                arrivalInput.required = true;
+                arrivalInputCell.appendChild(arrivalInput);
+
+                const dueCell = dueRow.insertCell();
+                dueCell.textContent = `Tâche ${i + 1}`;
+                
+                const dueInputCell = dueRow.insertCell();
+                const dueInput = document.createElement('input');
+                dueInput.type = 'number';
+                dueInput.name = `due_date_${i}`;
+                dueInput.placeholder = 'Délai';
+                dueInput.required = true;
+                dueInputCell.appendChild(dueInput);
+
+                // Générer les colonnes pour chaque machine
+                const taskProcessingCell = processingRow.insertCell();
+                taskProcessingCell.textContent = `Tâche ${i + 1}`;
+                for (let j = 0; j < numMachines; j++) {
+                    const processingInputCell = processingRow.insertCell();
+                    const processingInput = document.createElement('input');
+                    processingInput.type = 'number';
+                    processingInput.name = `processing_time_${i}_machine_${j}`;
+                    processingInput.placeholder = `Machine ${j + 1}`;
+                    processingInput.required = true;
+                    processingInputCell.appendChild(processingInput);
+                }
+            }
+        }
+
+        // Mettre à jour les tableaux à chaque modification du nombre de tâches ou de machines
+        document.getElementById('num_jobs').oninput = (e) => {
+            const numJobs = e.target.value;
+            const numMachines = document.getElementById('num_machines').value;
+            generateTimeTables(numJobs, numMachines);
+        };
+
+        document.getElementById('num_machines').oninput = (e) => {
+            const numMachines = e.target.value;
+            const numJobs = document.getElementById('num_jobs').value;
+            generateTimeTables(numJobs, numMachines);
+        };
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const num_jobs = parseInt(document.getElementById('num_jobs').value);
+                const num_machines = parseInt(document.getElementById('num_machines').value);
+                const arrival_times = [];
+                const processing_times = [];
+                const due_dates = [];
+                const constraints = {
+                    no_wait: document.getElementById('no_wait').checked,
+                    no_idle: document.getElementById('no_idle').checked,
+                    date_arrival: document.getElementById('date_arrival').checked,
+                    due_date_constraint: document.getElementById('due_date_constraint').checked
+                };
+
+                for (let i = 0; i < num_jobs; i++) {
+                    arrival_times.push(parseInt(document.querySelector(`[name="arrival_time_${i}"]`).value));
+                    due_dates.push(parseInt(document.querySelector(`[name="due_date_${i}"]`).value));
+
+                    const taskProcessingTimes = [];
+                    for (let j = 0; j < num_machines; j++) {
+                        taskProcessingTimes.push(parseInt(document.querySelector(`[name="processing_time_${i}_machine_${j}"]`).value));
+                    }
+                    processing_times.push(taskProcessingTimes);
+                }
+
+                const data = {
+                    num_jobs,
+                    num_machines,
+                    arrival_times,
+                    processing_times,
+                    due_dates,
+                    constraints,
+                    method: document.getElementById('method').value,
+                     // Ajouter les contraintes
+                };
+
+                const response = await fetch('/schedule', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Erreur : ${error.error}`);
+                    return;
+                }
+
+                const result = await response.json();
+                document.getElementById('results').innerHTML = ` 
+                    <div class="result-item"><strong>Séquence des tâches :</strong> ${result.sequence.join(', ')}</div>
+                    <div class="result-item"><strong>Temps maximal d'achèvement (Cmax) :</strong> ${result.cmax}</div>
+                    <div class="result-item"><strong>Temps moyen d'attente (TFT) :</strong> ${result.tft}</div>
+                    <div class="result-item"><strong>Temps moyen de traitement (TT) :</strong> ${result.tt}</div>
+                `;
+
+                const graph = JSON.parse(result.graph);
+                Plotly.newPlot('gantt-chart', graph.data, graph.layout);
+            } catch (err) {
+                console.error('Erreur :', err);
+                alert('Une erreur est survenue. Veuillez vérifier vos données.');
+            }
+        };
+    </script>
+
+</body>
+</html>
